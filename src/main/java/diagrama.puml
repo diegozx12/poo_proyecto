@@ -1,0 +1,197 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam packageStyle rectangle
+
+package "Módulo de Autenticación" {
+    class Cuenta {
+        - id: String
+        - contrasena: String
+        - rol: String
+        + validarCredenciales(id, contrasena): boolean
+    }
+    class AutenticacionServicio {
+        - cuentaActiva: Cuenta
+        + iniciarSesion(id, contrasena): Cuenta
+        + cerrarSesion(): void
+        + registrarCuenta(cuenta: Cuenta): void
+    }
+    class MenuAutenticacion {
+        + iniciarMenu(): void
+    }
+    class ConfiguracionSistema {
+        {static} + precargarDatosIniciales(): void
+    }
+    class AutenticacionException <<Exception>>
+    
+    AutenticacionServicio o-- Cuenta : "cuentasRegistradas"
+    MenuAutenticacion *-- AutenticacionServicio
+    MenuAutenticacion ..> ConfiguracionSistema : "usa"
+}
+
+package "Módulo de Catálogo e Inventario" {
+    abstract class Producto {
+        - id: String
+        - nombre: String
+        - precioBase: double
+        - stock: int
+        {abstract} + obtenerPrecioFinal(): double
+    }
+    class Electronico {
+        - marca: String
+        - garantiaMeses: int
+        + obtenerPrecioFinal(): double
+    }
+    class Ropa {
+        - talla: String
+        - material: String
+        + obtenerPrecioFinal(): double
+    }
+    class Comida {
+        - fechaCaducidad: String
+        + obtenerPrecioFinal(): double
+    }
+    class CatalogoServicio {
+        + registrarProducto(producto: Producto): void
+        + listarCatalogo(): void
+        + buscarProductoPorId(id: String): Producto
+    }
+    class MenuCatalogo {
+        + iniciarMenu(): void
+    }
+    class CatalogoException <<Exception>>
+
+    Producto <|-- Electronico
+    Producto <|-- Ropa
+    Producto <|-- Comida
+    CatalogoServicio o-- Producto : "listaProductos"
+    MenuCatalogo *-- CatalogoServicio
+}
+
+package "Módulo de Ventas y Facturación" {
+    class ItemCarrito {
+        - cantidadComprada: int
+        - precioUnitarioCongelado: double
+        - subtotalItem: double
+        + calcularSubtotalItem(): void
+    }
+    class CarritoCompras {
+        - subtotalTemporal: double
+        + validarStockDisponible(): boolean
+        + agregarProducto(producto, cantidad): void
+        + calcularSubtotalTemporal(): void
+        + vaciarCarrito(): void
+    }
+    class MenuVentasFacturacion {
+        + iniciarMenu(): void
+    }
+
+    ItemCarrito --> Producto : "productoSeleccionado"
+    CarritoCompras *-- ItemCarrito : "listaItems"
+    MenuVentasFacturacion *-- CarritoCompras
+}
+
+package "Módulo de Gestión de Pedidos" {
+    interface Descontable {
+        + calcularDescuento(monto: double): double
+    }
+    class Pedido {
+        - idPedido: int
+        - subtotalProductos: double
+        - costoEnvio: double
+        - descuentoAplicado: double
+        - totalFinalCobrado: double
+        - metodoPago: String
+        - estadoActual: String
+        + procesarReglaEnvioGratis(): void
+        + calcularTotalFinal(): void
+        + actualizarEstado(estado: String): void
+        + mostrarTicketFacturacion(): void
+    }
+    class GestorPedidos {
+        + registrarNuevoPedido(pedido: Pedido): void
+        + buscarPedidoPorId(id: int): Pedido
+        + listarPedidosPorEstado(estado: String): void
+    }
+    class MenuGestionPedidos {
+        + iniciarMenu(): void
+    }
+
+    Descontable <|.. Pedido
+    Pedido *-- ItemCarrito : "itemsComprados (copia)"
+    GestorPedidos o-- Pedido : "historialPedidos"
+    MenuGestionPedidos *-- GestorPedidos
+    MenuGestionPedidos --> CarritoCompras : "lee para checkout"
+}
+
+package "Módulo de Usuarios y Clientes" {
+    abstract class Usuario {
+        - id: String
+        - nombre: String
+        - contrasena: String
+        + autenticar(contrasena): boolean
+    }
+    class Cliente {
+        - direccionEnvio: String
+        - esVip: boolean
+        + esElegibleParaDescuento(): boolean
+    }
+    class Administrador {
+        - numeroEmpleado: String
+    }
+    class ClienteInvitado {
+        - nombre: String
+        - direccionEnvio: String
+    }
+    class GestorUsuarios {
+        + iniciarSesion(id, contrasena): Usuario
+        + registrarNuevoCliente(cliente: Cliente): void
+    }
+    class MenuGestorUsuarios {
+        - usuarioSesionActual: Usuario
+        + iniciarMenu(): Usuario
+    }
+
+    Usuario <|-- Cliente
+    Usuario <|-- Administrador
+    GestorUsuarios o-- Usuario : "listaUsuarios"
+    MenuGestorUsuarios *-- GestorUsuarios
+    MenuGestorUsuarios ..> ClienteInvitado : "instancia temporal"
+}
+
+package "Módulo de Reportes" {
+    class ReporteOperaciones {
+        - cantidadTotalOrdenes: int
+        - dineroTotalRecaudado: double
+        - productosSinStock: List<String>
+        + mostrarReporteCompleto(): void
+    }
+    class GestorReportes {
+        + generarReporteCierre(pedidos, catalogo): ReporteOperaciones
+        + verificarAlertasStock(catalogo): List<String>
+    }
+    class MenuGestorReportes {
+        + iniciarMenu(): void
+    }
+    class StockCriticoException <<Exception>>
+
+    GestorReportes ..> ReporteOperaciones : "crea"
+    MenuGestorReportes *-- GestorReportes
+}
+
+class Main {
+    + main(args: String[]): void
+}
+
+' Relaciones de integración globales desde el Main y cruzadas
+Main --> MenuAutenticacion
+Main --> MenuGestorUsuarios
+Main --> MenuCatalogo
+Main --> MenuVentasFacturacion
+Main --> MenuGestionPedidos
+Main --> MenuGestorReportes
+
+CarritoCompras --> Cliente : "clienteAsignado"
+Pedido --> Cliente : "clienteComprador"
+
+@enduml
